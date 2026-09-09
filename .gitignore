@@ -1,2 +1,5 @@
 # Maven build output
 Backend/target/
+
+# VS Code settings
+.vscode/
