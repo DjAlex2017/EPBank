@@ -1,12 +1,16 @@
 package com.epbank.backend.service;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.epbank.backend.dto.RegisterRequest;
 import com.epbank.backend.model.Customer;
 import com.epbank.backend.repository.CustomerRepository;
 import com.epbank.backend.dto.CustomerResponse;
+import com.epbank.backend.dto.LoginRequest;
+import com.epbank.backend.dto.LoginResponse;
 
 @Service
 public class CustomerService {
@@ -18,10 +22,26 @@ public class CustomerService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    public LoginResponse loginCustomer(LoginRequest request){
+        Customer customer = customerRepository.findByEmail(request.getEmail()).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid email or password"));
+        if(!passwordEncoder.matches(request.getPassword(), customer.getPasswordHash())){
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
+
+        LoginResponse response = new LoginResponse();
+
+        response.setId(customer.getId());
+        response.setFirstName(customer.getFirstName());
+        response.setLastName(customer.getLastName());
+        response.setEmail(customer.getEmail());
+
+        return response;
+    }
+
     public CustomerResponse registerCustomer(RegisterRequest request){
 
         if(customerRepository.findByEmail(request.getEmail()).isPresent()){
-            throw new IllegalArgumentException("Email already registered");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         }
 
         Customer customer = new Customer();

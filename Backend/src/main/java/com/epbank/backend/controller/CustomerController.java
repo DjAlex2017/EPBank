@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.epbank.backend.dto.RegisterRequest;
 import com.epbank.backend.dto.CustomerResponse;
+import com.epbank.backend.dto.LoginRequest;
+import com.epbank.backend.dto.LoginResponse;
 import com.epbank.backend.service.CustomerService;
 
 /* Annotation definitions
@@ -27,5 +29,10 @@ public class CustomerController {
     @PostMapping("/register")
     public CustomerResponse registerCustomer(@RequestBody RegisterRequest request){
         return customerService.registerCustomer(request);
+    }
+
+    @PostMapping("/login")
+    public LoginResponse loginCustomer(@RequestBody LoginRequest request){
+        return customerService.loginCustomer(request);
     }
 }
