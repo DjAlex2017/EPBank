@@ -1,18 +1,27 @@
 package com.epbank.backend.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.epbank.backend.dto.AccountResponse;
+import com.epbank.backend.dto.DepositRequest;
 import com.epbank.backend.dto.OpenAccountRequest;
+import com.epbank.backend.dto.WithdrawRequest;
+import com.epbank.backend.dto.TransferRequest;
 import com.epbank.backend.model.Account;
+import com.epbank.backend.model.AccountStatus;
 import com.epbank.backend.model.Customer;
 import com.epbank.backend.repository.AccountRepository;
 import com.epbank.backend.repository.CustomerRepository;
+
+
+
 
 @Service 
 public class AccountService {
@@ -76,5 +85,106 @@ public class AccountService {
 
         })
         .toList();
+    }
+
+    public AccountResponse deposit(DepositRequest request){
+         Account account = accountRepository.findById(request.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+
+         if(request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deposit amount must be greater than zero");
+        }
+         
+         if(account.getStatus() != AccountStatus.ACTIVE){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot deposit into a closed account");
+        }
+
+         account.setBalance(account.getBalance().add(request.getAmount()));
+
+         Account savedAccount = accountRepository.save(account);
+
+         AccountResponse response = new AccountResponse();
+
+         response.setId(savedAccount.getId());
+         response.setAccountNumber(savedAccount.getAccountNumber());
+         response.setAccountType(savedAccount.getAccountType());
+         response.setBalance(savedAccount.getBalance());
+         response.setStatus(savedAccount.getStatus());
+         response.setCreatedAt(savedAccount.getCreatedAt());
+
+         return response;
+    }
+
+    public AccountResponse withdraw(WithdrawRequest request){
+        Account account = accountRepository.findById(request.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+
+        if(request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Withdraw must be greater than zero");
+        }
+
+        if(account.getStatus() != AccountStatus.ACTIVE){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot withdraw from a closed account");
+        }
+
+        if(request.getAmount().compareTo(account.getBalance()) > 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds");
+        }
+
+        account.setBalance(account.getBalance().subtract(request.getAmount()));
+
+        Account savedAccount = accountRepository.save(account);
+
+        AccountResponse response = new AccountResponse();
+
+        response.setId(savedAccount.getId());
+        response.setAccountNumber(savedAccount.getAccountNumber());
+        response.setAccountType(savedAccount.getAccountType());
+        response.setBalance(savedAccount.getBalance());
+        response.setStatus(savedAccount.getStatus());
+        response.setCreatedAt(savedAccount.getCreatedAt());
+
+        return response;
+
+    }
+    
+     @Transactional 
+    public AccountResponse transfer(TransferRequest request){
+        Account fromAccount = accountRepository.findById(request.getFromAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Source account not found"));
+
+        Account toAccount = accountRepository.findById(request.getToAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Destination account not found"));
+
+        if(request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transfer amount must be greater than zero");
+        }
+
+        if(fromAccount.getStatus() != AccountStatus.ACTIVE || toAccount.getStatus() != AccountStatus.ACTIVE){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Both accounts must be active");
+        }
+
+        if(request.getAmount().compareTo(fromAccount.getBalance()) > 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds");
+        }
+
+        if(fromAccount.getId().equals(toAccount.getId())){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot transfer to the same account");
+        }
+
+        fromAccount.setBalance(fromAccount.getBalance().subtract(request.getAmount()));
+
+        toAccount.setBalance(toAccount.getBalance().add(request.getAmount()));
+
+       
+        Account savedFromAccount = accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+        AccountResponse response = new AccountResponse();
+
+        response.setId(savedFromAccount.getId());
+        response.setAccountNumber(savedFromAccount.getAccountNumber());
+        response.setAccountType(savedFromAccount.getAccountType());
+        response.setBalance(savedFromAccount.getBalance());
+        response.setStatus(savedFromAccount.getStatus());
+        response.setCreatedAt(savedFromAccount.getCreatedAt());
+
+        return response;
     }
 }

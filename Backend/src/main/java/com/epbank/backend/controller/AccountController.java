@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.epbank.backend.dto.AccountResponse;
 import com.epbank.backend.dto.OpenAccountRequest;
+import com.epbank.backend.dto.WithdrawRequest;
+import com.epbank.backend.dto.DepositRequest;
+import com.epbank.backend.dto.TransferRequest;
 import com.epbank.backend.service.AccountService;
 
 @RestController 
@@ -30,5 +33,20 @@ public class AccountController {
     @GetMapping("/customer/{customerId}")
     public List<AccountResponse> getAccountsByCustomer(@PathVariable Long customerId){
         return accountService.getAccountsByCustomer(customerId);
+    }
+
+    @PostMapping("/deposit")
+    public AccountResponse deposit(@RequestBody DepositRequest request){
+        return accountService.deposit(request);
+    }
+
+    @PostMapping("/withdraw")
+    public AccountResponse withdraw(@RequestBody WithdrawRequest request){
+        return accountService.withdraw(request);
+    }
+
+    @PostMapping ("/transfer")
+    public AccountResponse transfer(@RequestBody TransferRequest request){
+        return accountService.transfer(request);
     }
 }
