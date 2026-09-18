@@ -14,6 +14,8 @@ import com.epbank.backend.dto.OpenAccountRequest;
 import com.epbank.backend.dto.WithdrawRequest;
 import com.epbank.backend.dto.DepositRequest;
 import com.epbank.backend.dto.TransferRequest;
+import com.epbank.backend.dto.TransactionResponse;
+
 import com.epbank.backend.service.AccountService;
 
 @RestController 
@@ -48,5 +50,10 @@ public class AccountController {
     @PostMapping ("/transfer")
     public AccountResponse transfer(@RequestBody TransferRequest request){
         return accountService.transfer(request);
+    }
+
+    @GetMapping("/{accountId}/transactions")
+    public List<TransactionResponse> getTransactionsByAccount(@PathVariable Long accountId){
+        return accountService.getTransactionsByAccount(accountId);
     }
 }

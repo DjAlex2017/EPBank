@@ -14,11 +14,17 @@ import com.epbank.backend.dto.DepositRequest;
 import com.epbank.backend.dto.OpenAccountRequest;
 import com.epbank.backend.dto.WithdrawRequest;
 import com.epbank.backend.dto.TransferRequest;
+import com.epbank.backend.dto.TransactionResponse;
+
 import com.epbank.backend.model.Account;
 import com.epbank.backend.model.AccountStatus;
 import com.epbank.backend.model.Customer;
+import com.epbank.backend.model.Transaction;
+import com.epbank.backend.model.TransactionType;
+
 import com.epbank.backend.repository.AccountRepository;
 import com.epbank.backend.repository.CustomerRepository;
+import com.epbank.backend.repository.TransactionRepository;
 
 
 
@@ -27,10 +33,12 @@ import com.epbank.backend.repository.CustomerRepository;
 public class AccountService {
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
+    private final TransactionRepository transactionRepository;
 
-    public AccountService(AccountRepository accountRepository, CustomerRepository customerRepository){
+    public AccountService(AccountRepository accountRepository, CustomerRepository customerRepository, TransactionRepository transactionRepository){
         this.accountRepository = accountRepository;
         this.customerRepository = customerRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     private String generateAccountNumber(){
@@ -87,6 +95,7 @@ public class AccountService {
         .toList();
     }
 
+    @Transactional 
     public AccountResponse deposit(DepositRequest request){
          Account account = accountRepository.findById(request.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
 
@@ -103,6 +112,13 @@ public class AccountService {
          Account savedAccount = accountRepository.save(account);
 
          AccountResponse response = new AccountResponse();
+         Transaction transaction = new Transaction();
+
+         transaction.setTransactionType(TransactionType.DEPOSIT);
+         transaction.setAmount(request.getAmount());
+         transaction.setAccount(savedAccount);
+
+         transactionRepository.save(transaction);
 
          response.setId(savedAccount.getId());
          response.setAccountNumber(savedAccount.getAccountNumber());
@@ -114,11 +130,12 @@ public class AccountService {
          return response;
     }
 
+    @Transactional 
     public AccountResponse withdraw(WithdrawRequest request){
         Account account = accountRepository.findById(request.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
 
         if(request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Withdraw must be greater than zero");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Withdrawal amount must be greater than zero");
         }
 
         if(account.getStatus() != AccountStatus.ACTIVE){
@@ -134,6 +151,14 @@ public class AccountService {
         Account savedAccount = accountRepository.save(account);
 
         AccountResponse response = new AccountResponse();
+
+        Transaction transaction = new Transaction();
+
+        transaction.setTransactionType(TransactionType.WITHDRAWAL);
+        transaction.setAmount(request.getAmount());
+        transaction.setAccount(savedAccount);
+
+        transactionRepository.save(transaction);
 
         response.setId(savedAccount.getId());
         response.setAccountNumber(savedAccount.getAccountNumber());
@@ -177,6 +202,23 @@ public class AccountService {
         accountRepository.save(toAccount);
 
         AccountResponse response = new AccountResponse();
+        
+        Transaction transaction = new Transaction();
+
+        transaction.setTransactionType(TransactionType.TRANSFER_OUT);
+        transaction.setAmount(request.getAmount());
+        transaction.setAccount(savedFromAccount);
+
+        transactionRepository.save(transaction);
+
+        Transaction incomingTransaction = new Transaction();
+
+        incomingTransaction.setTransactionType(TransactionType.TRANSFER_IN);
+        incomingTransaction.setAmount(request.getAmount());
+        incomingTransaction.setAccount(toAccount);
+
+        transactionRepository.save(incomingTransaction);
+        
 
         response.setId(savedFromAccount.getId());
         response.setAccountNumber(savedFromAccount.getAccountNumber());
@@ -186,5 +228,24 @@ public class AccountService {
         response.setCreatedAt(savedFromAccount.getCreatedAt());
 
         return response;
+    }
+
+    public List<TransactionResponse> getTransactionsByAccount(Long accountId){
+        if(!accountRepository.existsById(accountId)){
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found");
+        }
+            List<Transaction> transactions = transactionRepository.findByAccountId(accountId);
+
+            return transactions.stream().map(transaction -> {TransactionResponse response = new TransactionResponse();
+                
+            response.setId(transaction.getId());
+            response.setTransactionType(transaction.getTransactionType());
+            response.setAmount(transaction.getAmount());
+            response.setCreatedAt(transaction.getCreatedAt());
+            response.setAccountId(transaction.getAccount().getId());
+
+            return response;
+
+            }).toList();
     }
 }
