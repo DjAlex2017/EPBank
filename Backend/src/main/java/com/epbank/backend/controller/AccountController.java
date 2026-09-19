@@ -3,6 +3,7 @@ package com.epbank.backend.controller;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,5 +56,10 @@ public class AccountController {
     @GetMapping("/{accountId}/transactions")
     public List<TransactionResponse> getTransactionsByAccount(@PathVariable Long accountId){
         return accountService.getTransactionsByAccount(accountId);
+    }
+
+    @PatchMapping("/{accountId}/close")
+    public AccountResponse closeAccount(@PathVariable Long accountId){
+        return accountService.closeAccount(accountId);
     }
 }

@@ -248,4 +248,31 @@ public class AccountService {
 
             }).toList();
     }
+
+    public AccountResponse closeAccount(Long accountId){
+        Account account = accountRepository.findById(accountId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+
+        if(account.getBalance().compareTo(BigDecimal.ZERO) != 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account balance must be zero before closing");
+        }
+
+        if(account.getStatus() == AccountStatus.CLOSED){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is already closed");
+        }
+
+        account.setStatus(AccountStatus.CLOSED);
+
+        Account savedAccount = accountRepository.save(account);
+
+        AccountResponse response = new AccountResponse();
+
+        response.setId(savedAccount.getId());
+        response.setAccountNumber(savedAccount.getAccountNumber());
+        response.setAccountType(savedAccount.getAccountType());
+        response.setBalance(savedAccount.getBalance());
+        response.setStatus(savedAccount.getStatus());
+        response.setCreatedAt(savedAccount.getCreatedAt());
+
+        return response;
+    }
 }
